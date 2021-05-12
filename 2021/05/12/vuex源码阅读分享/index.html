@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html 
+  lang="zh-CN" > <head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#fff" id="theme-color">
+  <meta name="description" content="小雨的博客">
+  <link rel="icon" href="https://demo.theme-kaze.top/img/Kaze.png">
+  <title>vuex源码阅读分享</title>
+  
+  
+  <meta property="og:title" content="vuex源码阅读分享">
+  
+  
+  <meta property="og:url" content="http://example.com/2021/05/12/vuex%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E5%88%86%E4%BA%AB/index.html">
+  
+  
+  <meta property="og:img" content="https://demo.theme-kaze.top/img/Kaze.png">
+  
+  
+  <meta property="og:img" content="小雨的博客">
+  
+  
+  <meta property="og:type" content="article">
+  <meta property="og:article:published_time" content="2021-05-12">
+  <meta property="og:article:modified_time" content="2021-05-12">
+  <meta property="og:article:author" content="xiaoyu">
+  
+  
+  <meta property="og:article:tag" content="vue">
+  
+  <meta property="og:article:tag" content="vuex">
+  
+  
+  
+  
+  <script>
+    // control reverse button
+    var reverseDarkList = {
+      dark: 'light',
+      light: 'dark'
+    };
+    var themeColor = {
+      dark: '#1c1c1e',
+      light: '#fff'
+    }
+    // get the data of css prefers-color-scheme
+    var getCssMediaQuery = function() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    };
+    // reverse current darkmode setting function
+    var reverseDarkModeSetting = function() {
+      var setting = localStorage.getItem('user-color-scheme');
+      if(reverseDarkList[setting]) {
+        setting = reverseDarkList[setting];
+      } else if(setting === null) {
+        setting = reverseDarkList[getCssMediaQuery()];
+      } else {
+        return;
+      }
+      localStorage.setItem('user-color-scheme', setting);
+      return setting;
+    };
+    // apply current darkmode setting
+    var setDarkmode = function(mode) {
+      var setting = mode || localStorage.getItem('user-color-scheme');
+      if(setting === getCssMediaQuery()) {
+        document.documentElement.removeAttribute('data-user-color-scheme');
+        localStorage.removeItem('user-color-scheme');
+        document.getElementById('theme-color').content = themeColor[setting];
+      } else if(reverseDarkList[setting]) {
+        document.documentElement.setAttribute('data-user-color-scheme', setting);
+        document.getElementById('theme-color').content = themeColor[setting];
+      } else {
+        document.documentElement.removeAttribute('data-user-color-scheme');
+        localStorage.removeItem('user-color-scheme');
+        document.getElementById('theme-color').content = themeColor[getCssMediaQuery()];
+      }
+    };
+    setDarkmode();
+  </script>
+  <script>
+    function loadScript(url, cb) {
+      var script = document.createElement('script');
+      script.src = url;
+      if (cb) script.onload = cb;
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  </script>
+  
+  <link rel="preload" href="//at.alicdn.com/t/font_1946621_i1kgafibvw.css" as="style" >
+  <link rel="preload" href="//at.alicdn.com/t/font_1952792_89b4ac4k4up.css" as="style" >
+  <!-- TODO: New Prefetch Plan -->
+  
+  <link rel="preload" href="/js/lib/lightbox/baguetteBox.min.js" as="script">
+  <link rel="preload" href="/js/lib/lightbox/baguetteBox.min.css" as="style" >
+  
+  
+  <link rel="preload" href="/js/lib/lozad.min.js" as="script">
+  
+  
+  
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <link rel="stylesheet" href="//at.alicdn.com/t/font_1946621_i1kgafibvw.css">
+  
+  <link rel="stylesheet" href="//at.alicdn.com/t/font_1952792_89b4ac4k4up.css">
+  
+  <link rel="stylesheet" href="/js/lib/lightbox/baguetteBox.min.css">
+  
+  
+  
+  
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+  <body>
+    <div class="wrapper">
+       <nav class="navbar">
+  <div class="navbar-logo">
+    <span class="navbar-logo-main">
+      
+      <img class="navbar-logo-img" src="https://demo.theme-kaze.top/img/Kaze.png" alt="logo">
+      
+      <span class="navbar-logo-dsc">小雨博客</span>
+    </span>
+  </div>
+  <div class="navbar-menu">
+    
+    <a href="/" class="navbar-menu-item">
+    
+    首页
+    
+    </a>
+    
+    <a href="/archives" class="navbar-menu-item">
+    
+    归档
+    
+    </a>
+    
+    <a href="/tags" class="navbar-menu-item">
+    
+    标签
+    
+    </a>
+    
+    <a href="/categories" class="navbar-menu-item">
+    
+    分类
+    
+    </a>
+    
+    <a href="/about" class="navbar-menu-item">
+    
+    关于
+    
+    </a>
+    
+    <a href="/links" class="navbar-menu-item">
+    
+    友链
+    
+    </a>
+    
+    <a class="navbar-menu-item darknavbar" id="dark"><i class="iconfont icon-weather"></i></a>
+    <a class="navbar-menu-item searchnavbar" id="search"><i class="iconfont icon-search" style="font-size: 1.2rem; font-weight: 400;"></i></a>
+  </div>
+</nav> 
+      <div id="local-search" style="display: none">
+        <input
+          class="navbar-menu-item"
+          id="search-input"
+          placeholder="请输入搜索内容..."
+        />
+        <div id="search-content"></div>
+      </div>
+      
+      <div class="section-wrap">
+        <div class="container">
+          <div class="columns">
+            <main class="main-column">
+<article class="card card-content">
+  <header>
+    <h1 class="post-title">
+      vuex源码阅读分享
+    </h1>
+  </header>
+  <div class="post-meta post-show-meta">
+    <time datetime="2021-05-12T08:17:40.000Z">
+      <i class="iconfont icon-calendar" style="margin-right: 2px;"></i>
+      <span>2021-05-12</span>
+    </time>
+    
+    
+    <span class="dot"></span>
+    <span>4.8k 字</span>
+    
+  </div>
+  
+  <div class="post-meta post-show-meta" style="margin-top: -10px;">
+    <div style="display: flex; align-items: center;">
+      <i class="iconfont icon-biaoqian" style="margin-right: 2px; font-size: 1.15rem;"></i>
+      
+      
+        <a href="/tags/vue/" class="post-meta-link">vue</a>
+      
+      
+      <span class="dot"></span>
+      
+        <a href="/tags/vuex/" class="post-meta-link">vuex</a>
+      
+    </div>
+  </div>
+  
+  </header>
+  <div id="section" class="post-content">
+    <ul>
+<li><h3 id="Vuex是什么"><a href="#Vuex是什么" class="headerlink" title="Vuex是什么"></a>Vuex是什么</h3><p>Vuex官网是这么定义Vuex的：</p>
+<blockquote>
+<p>Vuex 是专门为 Vue.js 设计的状态管理库，以利用 Vue.js 的细粒度数据响应机制来进行高效的状态更新。</p>
+</blockquote>
+<p>对于前半句定义会比较好理解。由于组件的多样性和复用性，多个组件经常会依赖于同一个状态，又或者多个组件都存在变更状态的需求。因此状态的更新与同步便十分复杂且难以操作。因此，vuex通过一个全局单例模式对组件的状态统一进行管理，也就是我们常说的“状态树”。</p>
+<p>但是对于定义中中的后半句，让人感到似理解又似不理解，不用担心，后面在讲解源码的过程中会验证这一点。</p>
+<p><strong>注：本文由于是源码解析，所以会插入一些源码的相关代码！</strong></p>
+</li>
+<li><h3 id="如何与Vue相关联"><a href="#如何与Vue相关联" class="headerlink" title="如何与Vue相关联"></a>如何与Vue相关联</h3><img width=600 src="../../assets/imgs/img4.png" />
+
+<p>  首先Vuex会作为插件传入到Vue.use方法内。Vue官方文档对use的解释是这样的：</p>
+<blockquote>
+<p>安装 Vue.js 插件。如果插件是一个对象，必须提供 install 方法。如果插件是一个函数，它会被作为 install 方法。install 方法调用时，会将 Vue 作为参数传入。</p>
+</blockquote>
+<p>  自然，Vuex也抛出了一个带有install方法的的对象。。</p>
+  <pre class="highlight"><span class="line">function install (_Vue) &#123;</span><br><span class="line">    // ...</span><br><span class="line">    applyMixin(Vue);</span><br><span class="line">&#125;</span><br><span class="line">function applyMixin (Vue) &#123;</span><br><span class="line">    var version = Number(Vue.version.split(&#x27;.&#x27;)[0]);</span><br><span class="line">  </span><br><span class="line">    if (version &gt;= 2) &#123; // vue版本大于2则使用mixin全局注册一个混入</span><br><span class="line">      Vue.mixin(&#123; beforeCreate: vuexInit &#125;);</span><br><span class="line">    &#125; else &#123; // 否则就手动在_init函数内混入初始化vuex的方法</span><br><span class="line">      var _init = Vue.prototype._init;</span><br><span class="line">      Vue.prototype._init = function (options) &#123;</span><br><span class="line">        options.init = options.init</span><br><span class="line">          ? [vuexInit].concat(options.init)</span><br><span class="line">          : vuexInit;</span><br><span class="line">        _init.call(this, options);</span><br><span class="line">      &#125;;</span><br><span class="line">&#125;</span><br></pre>
+<p>  看到这里我们也可以大胆的猜测vuex通过对beforeCreate生命周期函数里混入vuex初始化的函数，来保证vue组件在初始化的同时也完成了对vuex的初始化操作。</p>
+<p>  那么vuexInit具体做了什么呢？vuexInit为组件绑定了$store属性，<code>this.$store = this.$options.store</code>.</p>
+<p>$options又是什么呢，它为什么拥有store属性？</p>
+<pre class="highlight"><span class="line">new Vue(&#123;</span><br><span class="line">  render: h =&gt; h(App),</span><br><span class="line">  store,</span><br><span class="line">  router</span><br><span class="line">&#125;).$mount(&quot;#app&quot;);</span><br><span class="line"></span><br><span class="line">Vue源码：</span><br><span class="line">function initMixin (Vue) &#123;</span><br><span class="line">    Vue.prototype._init = function (options) &#123;</span><br><span class="line">      var vm = this;</span><br><span class="line">      </span><br><span class="line">      ......</span><br><span class="line">      </span><br><span class="line">      // merge options</span><br><span class="line">      if (options &amp;&amp; options._isComponent) &#123;</span><br><span class="line">        initInternalComponent(vm, options);</span><br><span class="line">      &#125; else &#123;</span><br><span class="line">        vm.$options = mergeOptions(</span><br><span class="line">          resolveConstructorOptions(vm.constructor),</span><br><span class="line">          options || &#123;&#125;,</span><br><span class="line">          vm</span><br><span class="line">        );</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      ......</span><br><span class="line">  &#125;</span><br></pre>
+
+<p>看到Vue源码会发现，在实例化Vue的时候Vue会把传入的参数绑定到实例的$options属性上，因此，在vue中，组件初始化的时候会从$options中获取到store对象，并赋值给实例的$store属性上，这样我们可直接通过访问this.$store下的方法改变状态了(eg: this.$store.dispatch)。</p>
+</li>
+<li><h3 id="状态树的结构"><a href="#状态树的结构" class="headerlink" title="状态树的结构"></a>状态树的结构</h3></li>
+</ul>
+<ul>
+<li><p>在阅读源码的过程中，会发现其核心会有三个类函数，正是这些类函数构成了状态树。它们分别是：Module、ModuleCollection、Store</p>
+<img width=600 src="vuex-img/img5.png" />
++ Module
+  在vuex中是存在模块的概念的，每个模块会拥有自己的 state、mutation、action、getter、甚至是拥有子模块。因此Module类是vuex中模块概念的最基本的类，它帮助vuex生成模块实例，同时也提供了关于模块的增删改查的原型方法。
+  <pre class="highlight"><span class="line">var Module = function Module (rawModule, runtime) &#123;</span><br><span class="line">    this.runtime = runtime;</span><br><span class="line">    this._children = Object.create(null); // _children存储了子模块集合</span><br><span class="line">    this._rawModule = rawModule; // 存储原始模块，包括state、mutation...</span><br><span class="line">    var rawState = rawModule.state;</span><br><span class="line">    this.state = (typeof rawState === &#x27;function&#x27; ? rawState() : rawState) || &#123;&#125;; // 存储状态</span><br><span class="line">&#125;</span><br></pre>
+  细心的小伙伴会留意到，代码的最后一行里rawState可为函数可为对象。这个设计实际与Vue Data是类似的，某些业务场景会需要对模块进行复用，此时如果模块返回的状态是个对象，那么使用该模块的各个部分的状态数据会存在混乱的风险。想了解更多，可以访问[这个链接](https://vuex.vuejs.org/zh/guide/modules.html#%E6%A8%A1%E5%9D%97%E9%87%8D%E7%94%A8).
+
+<ul>
+<li><p>ModuleCollection<br>既然有了不同的模块，模块间可能是兄弟，可能是父子。模块的生成与关联就需要管理了。自然而然，ModuleCollection类就是做了这样的事情。</p>
+<pre class="highlight"><span class="line">var ModuleCollection = function ModuleCollection (rawRootModule) &#123;</span><br><span class="line">    this.register([], rawRootModule, false); // 注册模块</span><br><span class="line">&#125;;</span><br><span class="line">ModuleCollection.prototype.register = function register (path, rawModule, runtime) &#123;</span><br><span class="line">    var this$1 = this;</span><br><span class="line">    </span><br><span class="line">    var newModule = new Module(rawModule, runtime);</span><br><span class="line">    if (path.length === 0) &#123;</span><br><span class="line">      // ModuleCollection实例上挂载一个Module对象</span><br><span class="line">      this.root = newModule;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">      // 在父模块上挂载子模块</span><br><span class="line">      var parent = this.get(path.slice(0, -1));</span><br><span class="line">      parent.addChild(path[path.length - 1], newModule);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 递归注册嵌套模块（vuex子模块）</span><br><span class="line">    if (rawModule.modules) &#123;</span><br><span class="line">      forEachValue(rawModule.modules, function (rawChildModule, key) &#123;</span><br><span class="line">        this$1.register(path.concat(key), rawChildModule, runtime);</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre>
+<p>可以看到，ModuleCollection构造函数很简单，就是递归根模块(调用register方法)，注册所有的模块。并通过在父模块上挂载子模块，实现了模块的统一管理。</p>
+<p>register中第一个参数path代表着访问某模块的路径，比如说下面这个例子，现在有一个根模块，它下面有模块account，模块account下又有模块myPage，因此模块myPage的访问路径就是[‘account’, ‘myPage’]。如果访问路径为空，那么一定是根模块，因此会在ModuleCollection实例上添加静态成员root，否则会找到父模块，然后添加子模块到父模块的_children中。<br>这里根模块的rawModule就是传入Store的整个对象。</p>
+<pre class="highlight"><span class="line">const store = new Vuex.Store(&#123;</span><br><span class="line">  modules: &#123;</span><br><span class="line">    account: &#123;</span><br><span class="line">      state: &#123; ... &#125;,</span><br><span class="line">      getters: &#123;</span><br><span class="line">        isAdmin () &#123; ... &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      actions: &#123;</span><br><span class="line">        login () &#123; ... &#125;</span><br><span class="line">      &#125;,</span><br><span class="line">      mutations: &#123;</span><br><span class="line">        login () &#123; ... &#125;</span><br><span class="line">      &#125;,</span><br><span class="line"></span><br><span class="line">      // 嵌套模块</span><br><span class="line">      modules: &#123;</span><br><span class="line">        myPage: &#123;</span><br><span class="line">          ...</span><br><span class="line">        &#125;,</span><br><span class="line">        ...</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre>
+<p>因此，一个简单的模块树就生成了：</p>
+<img width=600 src="vuex-img/img2.png" /></li>
+<li><p>Store</p>
+<p>接下来重点来了，Store类是vuex中最重要的类函数，它既是启动vuex的关键步骤之一，也是创建虚拟树的实现场所。它主要完成的工作有：</p>
+<p>1、根据不同模块的命名空间，创建模块当前环境的上下文环境。</p>
+<p>2、遍历所有模块，注册当前环境的actions、mutations、getters方法。</p>
+<p>3、初始化虚拟状态树。</p>
+<p>首先，我们需要先熟悉一下Vuex中的命名空间。下面是官方文档的一个例子：</p>
+<pre class="highlight"><span class="line">const store = new Vuex.Store(&#123;</span><br><span class="line">  modules: &#123;</span><br><span class="line">    account: &#123;</span><br><span class="line">      namespaced: true,</span><br><span class="line">      state: &#123; ... &#125;, </span><br><span class="line">      getters: &#123;</span><br><span class="line">        isAdmin () &#123; ... &#125; // -&gt; getters[&#x27;account/isAdmin&#x27;]</span><br><span class="line">      &#125;,</span><br><span class="line">      actions: &#123;</span><br><span class="line">        login () &#123; ... &#125; // -&gt; dispatch(&#x27;account/login&#x27;)</span><br><span class="line">      &#125;,</span><br><span class="line">      mutations: &#123;</span><br><span class="line">        login () &#123; ... &#125; // -&gt; commit(&#x27;account/login&#x27;)</span><br><span class="line">      &#125;,</span><br><span class="line"></span><br><span class="line">      // 嵌套模块</span><br><span class="line">      modules: &#123;</span><br><span class="line">        // 继承父模块的命名空间</span><br><span class="line">        myPage: &#123;</span><br><span class="line">          state: &#123; ... &#125;,</span><br><span class="line">          getters: &#123;</span><br><span class="line">            profile () &#123; ... &#125; // -&gt; getters[&#x27;account/profile&#x27;]</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;,</span><br><span class="line"></span><br><span class="line">        // 进一步嵌套命名空间</span><br><span class="line">        posts: &#123;</span><br><span class="line">          namespaced: true,</span><br><span class="line"></span><br><span class="line">          state: &#123; ... &#125;,</span><br><span class="line">          getters: &#123;</span><br><span class="line">            popular () &#123; ... &#125; // -&gt; getters[&#x27;account/posts/popular&#x27;]</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;)</span><br></pre>
+
+<p>也就是说，命名空间会创造出一种环境，<strong>该环境下定义的getters、actions、mutation是局部化的</strong>，不能像全局环境的下的方法直接调用，而是需要加上完整的命名空间路径才可以访问。了解了命名空间的基本用法后，我们就可以阅读一下Store的构造函数都做了些什么啦</p>
+<pre class="highlight"><span class="line">var Store = function Store (options) &#123;</span><br><span class="line">    /*=== Store实例挂载静态成员 ===*/</span><br><span class="line">    ......</span><br><span class="line">    this._modules = new ModuleCollection(options); // ModuleCollection实例</span><br><span class="line">    ......</span><br><span class="line"></span><br><span class="line">    /*=== 实例绑定commit和dispatch方法 ===*/</span><br><span class="line">    var store = this;</span><br><span class="line">    var ref = this;</span><br><span class="line">    var dispatch = ref.dispatch;</span><br><span class="line">    var commit = ref.commit;</span><br><span class="line">    this.dispatch = function boundDispatch (type, payload) &#123;</span><br><span class="line">      return dispatch.call(store, type, payload)</span><br><span class="line">    &#125;;</span><br><span class="line">    this.commit = function boundCommit (type, payload, options) &#123;</span><br><span class="line">      return commit.call(store, type, payload, options)</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    // strict mode</span><br><span class="line">    this.strict = strict;</span><br><span class="line"></span><br><span class="line">    var state = this._modules.root.state;</span><br><span class="line"></span><br><span class="line">	/*=== 初始化模块 ===*/</span><br><span class="line">    // init root module.初始化根模块。所有模块下注册actions、mutations、getters</span><br><span class="line">    installModule(this, state, [], this._modules.root);</span><br><span class="line"></span><br><span class="line">    /*=== 初始化虚拟状态树 ===*/</span><br><span class="line">    resetStoreVM(this, state);</span><br><span class="line"></span><br><span class="line">    /*=== 注册插件 ===*/</span><br><span class="line">    plugins.forEach(function (plugin) &#123; return plugin(this$1); &#125;);</span><br><span class="line"></span><br><span class="line">    var useDevtools = options.devtools !== undefined ? options.devtools : Vue.config.devtools;</span><br><span class="line">    if (useDevtools) &#123;</span><br><span class="line">      devtoolPlugin(this);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;;</span><br></pre>
+
+<p>可以看到，构造函数里还是处理了很多事情，这里就重点讲一下最核心的步骤：初始化模块和初始化虚拟状态树。</p>
+<h4 id="初始化模块"><a href="#初始化模块" class="headerlink" title="初始化模块"></a>初始化模块</h4><p>installModule函数主要完成了模块注册的功能，传入的模块会根据命名空间创建上下文环境，然后为模块绑定mutation、action、getter方法，最后遍历子模块，递归调用installModule注册子模块。</p>
+<p>笔者在阅读vuex源码时对命名空间不了解，所以阅读时对此处理解困难，因此建议不了解vx命名空间的读者可以先阅读官方文档，然后再读源码会容易很多。所以，接下来我们重点讲一下如何根据命名空间创建上下文环境，上下文环境有何作用？</p>
+<pre class="highlight"><span class="line">function makeLocalContext (store, namespace, path) &#123;</span><br><span class="line">    var noNamespace = namespace === &#x27;&#x27;;</span><br><span class="line"></span><br><span class="line">    var local = &#123;  </span><br><span class="line">      dispatch: noNamespace ? store.dispatch : function (_type, _payload, _options) &#123;</span><br><span class="line">        var args = unifyObjectStyle(_type, _payload, _options); // 统一对象样式</span><br><span class="line">        var payload = args.payload;</span><br><span class="line">        var options = args.options;</span><br><span class="line">        var type = args.type;</span><br><span class="line">        </span><br><span class="line">        if (!options || !options.root) &#123;</span><br><span class="line">          type = namespace + type;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        return store.dispatch(type, payload)</span><br><span class="line">      &#125;,</span><br><span class="line"></span><br><span class="line">      commit: noNamespace ? store.commit : function (_type, _payload, _options) &#123;</span><br><span class="line">        // ... 与上面dispatch相似</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    Object.defineProperties(local, &#123;</span><br><span class="line">      getters: &#123;</span><br><span class="line">        // ... 与上面dispatch相似</span><br><span class="line">      &#125;,</span><br><span class="line">      state: &#123;</span><br><span class="line">        get: function () &#123; return getNestedState(store.state, path); &#125; </span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    return local</span><br><span class="line">  &#125;</span><br></pre>
+
+<p>创建上下文环境是为了保证处于上下文环境时，触发action等行为时可直接传入方法名，无需写完整的访问路径。这有点像js中的this.xxx，创建上下文环境就是为了让“this”指向当前环境。比如说路径为[‘a’, ‘b’]的模块(a，b均开启了命名空间)的actions内想要触发自己环境下的xxx方法时，直接dispatch(‘xxx’)即可，vuex会帮你把完整路径补全。但在全局环境下就需要dispatch(‘a/b/xxx’)才可以。</p>
+<p>(<strong>注意，上面提到的this并不代表代码中的this指向，只是借用js中this来表达上下文环境这个概念而已！切记不要被混淆了~)</strong></p>
+<p>如果没有命名空间，那么模块下注册的actions等默认会被挂载在全局空间下，因此直接使用store的dispatch方法就可以了。</p>
+<p>那如果想在b环境调用全局环境的方法可咋整呢。vuex提供了传入{root: true}选项，传入改选项后就可以访问全局方法了！比如b环境下dispatch(‘xxx’, params, {root: true})就可以保证此时的上下文环境不会指向当前环境了。也可以从代码中看到，option.root为true时并不会为方法名前补齐路径！</p>
+<p>创建完上下文环境对象后，就可以为模块注册当前环境的mutation、action、getter方法了。</p>
+<p><strong>细心的小伙伴可能会留意到，前面提到命名空间是对某个环境下所定义的getters、actions、mutation进行了局部化，为什么没有包含state呢？这是因为vuex本身设计思想就是state是与模块直接关联的，即使没有命名空间时访问state也需要完整的路径名，因为有没有命名空间对state来说都没有影响了</strong></p>
+<h4 id="初始化虚拟状态树"><a href="#初始化虚拟状态树" class="headerlink" title="初始化虚拟状态树"></a>初始化虚拟状态树</h4><p>看到这里，其实一个基本的树状结构就生成了。但是状态树的数据响应是怎么实现的呢？关于数据响应，主要体现在了虚拟状态树上，虚拟状态树其本质实际上是Vue的一个实例，哎？这就比较神奇了。接下来我们阅读下相关的核心代码：</p>
+<pre class="highlight"><span class="line">function resetStoreVM (store, state, hot) &#123;</span><br><span class="line">    var oldVm = store._vm;</span><br><span class="line"></span><br><span class="line">    store.getters = &#123;&#125;;</span><br><span class="line">    var wrappedGetters = store._wrappedGetters;</span><br><span class="line">    var computed = &#123;&#125;;</span><br><span class="line">    forEachValue(wrappedGetters, function (fn, key) &#123;</span><br><span class="line">      computed[key] = partial(fn, store);</span><br><span class="line">      Object.defineProperty(store.getters, key, &#123;</span><br><span class="line">        get: function () &#123; return store._vm[key]; &#125;,</span><br><span class="line">        enumerable: true // for local getters</span><br><span class="line">      &#125;);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    var silent = Vue.config.silent; </span><br><span class="line">    Vue.config.silent = true;// 在开始生成虚拟树前取消Vue所有的日志和警告</span><br><span class="line">    store._vm = new Vue(&#123;</span><br><span class="line">      data: &#123;</span><br><span class="line">        $$state: state</span><br><span class="line">      &#125;,</span><br><span class="line">      computed: computed</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br></pre>
+
+<p>可以看到，首先是对_wrappedGetters的进行遍历生成符合vue computed的结构体。__wrappedGetters对象里包含了所有传入的getters函数集合，key是完整命名空间访问路径名，值是一个函数，该函数内部调用了传入的getter函数，结构类似于：</p>
+<pre class="highlight"><span class="line">&#123;</span><br><span class="line">    &#x27;aNamespace/bNamespace/getCount&#x27;: function(store) &#123; return rawGetter(</span><br><span class="line">        local.state, // local state</span><br><span class="line">        local.getters, // local getters</span><br><span class="line">        store.state, // root state</span><br><span class="line">        store.getters // root getters</span><br><span class="line">      )</span><br><span class="line">    &#125;,</span><br><span class="line">&#125;</span><br></pre>
+
+<p>在遍历过程中，会往computed对象中注入key为完整命名空间路径，值是partial函数的返回值。</p>
+<pre class="highlight"><span class="line">function partial (fn, arg) &#123;</span><br><span class="line">    return function () &#123;</span><br><span class="line">      return fn(arg)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre>
+
+<p>从这里开始会有点绕，partial函数会返回一个函数，并且这个函数内执行了传入的fn参数。为什么要将fn传入partial函数处理呢？起初我误理解为是因为computed对象会作为Vue computed的值传递进去，所以是为了满足Vue computed的格式才这样处理的。后来我在了解函数式编程的时候，看到了柯里化函数的一个简单demo，脑中立马回忆起了partial函数，partial函数就是一个简单的柯里化函数啊！</p>
+<p>于是我重新阅读了这里的代码，发现我原本的理解是不准确的。使用partial函数的原因有两个：1⃣fn需要参数store的，2⃣Vue computed又需要的是无参函数。因此vuex这里使用了函数式编程的思想，将传入的函数最终转化为满足这两个条件的结果。</p>
+<p><img src="vuex-img/img6.png" alt="image-20200707185604555" srcset="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20300%20300'%3E%3C/svg%3E" data-src="vuex-img/img6.png" class="lozad post-image"></p>
+<p>如此，经过遍历_wrappedGetters之后，computed数据注入完毕了，也顺带为store实例添加了getters属性。然后把状态state和computed对象传入Vue构造函数后，一个虚拟状态树就诞生了！这里就是借助了Vue的响应式系统，传入到data和computed中的变量会被Vue实时监听，实现vuex的数据响应。现在我们通过dispatch、commit修改状态，就能够因为state的变化而映射到vue视图中了。或许会有疑问，为什么还要把getters集合传入computed中呢？state已经实现了数据响应，那么getter函数返回结果也会随着state的变化而变化。个人理解是因为在实际使用getters方法的时候，使用者会存在要监听getters返回值的场景，所以也需要保证getters是动态响应的。</p>
+<p><strong>注意：虽然在定义getter方法的时候我们赋值的是函数(eg: const getA = (state) =&gt; {…})，但是在vuex处理后，getA实际上是函数的返回值</strong></p>
+<p>看到这里，一个大致的完整的vuex结构构成了，同时也验证了vuex的后半句的定义：<strong>vuex是利用了Vue.js 的细粒度数据响应机制。</strong></p>
+<img width=600 src="vuex-img/img3.png" /></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><h3 id="辅助函数"><a href="#辅助函数" class="headerlink" title="辅助函数"></a>辅助函数</h3><p>vuex中提供了几个十分有用的辅助函数：mapState, mapGetters, mapActions, mapMutations，createNamespacedHelpers。</p>
+<p>前4个辅导函数会被经常使用到，且实现原理类似，这里就只讲解一下mapGetters的源码。</p>
+<pre class="highlight"><span class="line">var mapGetters = normalizeNamespace(function (namespace, getters) &#123;</span><br><span class="line">    var res = &#123;&#125;;</span><br><span class="line">    normalizeMap(getters).forEach(function (ref) &#123;</span><br><span class="line">      var key = ref.key;</span><br><span class="line">      var val = ref.val;</span><br><span class="line"></span><br><span class="line">      // The namespace has been mutated by normalizeNamespace</span><br><span class="line">      val = namespace + val;</span><br><span class="line">      res[key] = function mappedGetter () &#123;</span><br><span class="line">        if (namespace &amp;&amp; !getModuleByNamespace(this.$store, &#x27;mapGetters&#x27;, namespace)) &#123;</span><br><span class="line">          return</span><br><span class="line">        &#125;</span><br><span class="line">        if (!(val in this.$store.getters)) &#123;</span><br><span class="line">          console.error((&quot;[vuex] unknown getter: &quot; + val));</span><br><span class="line">          return</span><br><span class="line">        &#125;</span><br><span class="line">        return this.$store.getters[val]</span><br><span class="line">      &#125;;</span><br><span class="line">      // mark vuex getter for devtools</span><br><span class="line">      res[key].vuex = true;</span><br><span class="line">    &#125;);</span><br><span class="line">    return res</span><br><span class="line">&#125;);</span><br></pre>
+
+<p>mapGetters参数有两个，第一个参数namespace是可选的，可以是一个命名空间字符串；第二个参数getters可以是一个对象、数组。</p>
+<p>由于第一个参数是可选的，所以需要先用normalizeNamespace函数处理一下参数，保证namespace不传入时是空字符串。参数getters可以是一个对象、数组，因此需要normalizeMap函数处理，如下：</p>
+<pre class="highlight"><span class="line">function normalizeMap (map) &#123;</span><br><span class="line">    return Array.isArray(map)</span><br><span class="line">      ? map.map(function (key) &#123; return (&#123; key: key, val: key &#125;); &#125;)</span><br><span class="line">      : Object.keys(map).map(function (key) &#123; return (&#123; key: key, val: map[key] &#125;); &#125;)</span><br><span class="line">&#125;</span><br></pre>
+
+<p>如此便可保证处理后的getters是一个成员均为对象的数组。保证返回一样的格式体后，开始遍历，往res对象中添加成员，值为一个函数。函数内就是在getters集合里返回对于的getter函数，如果有命名空间路径，则val会进行拼接，最终会返回命名空间环境下的getter函数。</p>
+</li>
+<li><h3 id="异步"><a href="#异步" class="headerlink" title="异步"></a>异步</h3><p>vuex中明确规定了，<strong>mutation必须是同步函数</strong>。因为需要捕获到一个状态的前一状态和后一状态的快照，就必须保证状态的变更是按顺序的，否则在回调函数中进行的状态的变化都是不可追踪的。在源码中并没有限制不能异步，全靠使用者的自觉性了。</p>
+<p>那么，action函数呢。事实上，action函数可以是同步函数，也可以是异步函数，但在实际应用中我们往往有这样的写法：this.$store.dispatch(‘xxx’).then(() =&gt; {})；如果传入同步函数会如何呢？事实上vuex处理了这个部分。</p>
+<pre class="highlight"><span class="line">function registerAction (store, type, handler, local) &#123;</span><br><span class="line">    var entry = store._actions[type] || (store._actions[type] = []);</span><br><span class="line">    entry.push(function wrappedActionHandler (payload, cb) &#123;</span><br><span class="line">      var res = handler.call(store, &#123;</span><br><span class="line">        dispatch: local.dispatch,</span><br><span class="line">        commit: local.commit,</span><br><span class="line">        getters: local.getters,</span><br><span class="line">        state: local.state,</span><br><span class="line">        rootGetters: store.getters,</span><br><span class="line">        rootState: store.state</span><br><span class="line">      &#125;, payload, cb);</span><br><span class="line">      </span><br><span class="line">      if (!isPromise(res)) &#123;</span><br><span class="line">        // 返回promise实例。保证dispatch(&#x27;xxx&#x27;).then时不会报错</span><br><span class="line">        res = Promise.resolve(res);</span><br><span class="line">      &#125;</span><br><span class="line">      </span><br><span class="line">      return res</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre>
+
+<p>可以看到中间判断了一下action函数返回值是否为promise对象，不过不是promise对象，会包裹在Promise.resolve中调用，并返回它。因此能够保证最后返回的一定是promise实例，便可放心的调用then方法啦。官方文档也是建议异步相关的操作都写在action函数中，一个store.dispatch在不同模块中可以触发多个 action 函数。在这种情况下，只有当所有触发函数完成后，返回的 Promise 才会执行。</p>
+</li>
+<li><h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><p>看到这里，我留下了一些问题。各位小伙伴可以自行思考一下，其中有一些问题在本文是有答案的，有一些问题并没有绝对的答案，但是能带给我们很多思考哦</p>
+<p>1、<strong>action函数中执行定时器代码，那么dispatch(‘xxx’).then()会等待定时器执行完毕吗？</strong></p>
+<p>​      如果不会等待，有没有办法可以让其等待呢？</p>
+<p>2、<strong>action与mutation的最佳实践是什么？</strong></p>
+<p>​      平常我们会把业务代码写在action或者mutation下，那么哪些放在action比较合适，哪些放在mutation中比较合适呢？</p>
+<p>3、<strong>什么情况下项目使用vuex比较合适 ？</strong></p>
+<p>4、<strong>为什么vx要设计state与模块相关呢？</strong></p>
+<p>​      前面提到了，命名空间对state没有影响，因为state本身就已经和module直接相关了，vuex为什么要这样设计呢？为什么getters、mutations等不直接挂载到module上呢？</p>
+<p>5、<strong>有必要一个state一定要对应一个getter吗？</strong></p>
+<p>​      在我接触的项目开发中，这种现象很常见。在阅读到虚拟状态树那里的源码的时候，我意识到当我们使用mapGetters引入某个getter方法时，实际上会有三个名字不一样值却是一样的三个变量，且这三个变量都会被vue监听。从这个角度上思考，这是否是一种浪费呢？</p>
+</li>
+<li><h3 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h3><p>本篇源码解析是笔者自己的理解，仅参考了官方文档进行阅读的。理解的地方肯定是有些不正确或者模糊的地方，希望有其它见解的老师能给我指出来，万分感谢！</p>
+</li>
+</ul>
+
+  </div>
+  <div>
+  
+  <div class="post-note note-warning copyright" style="margin-top: 42px">
+    <p><span style="font-weight: bold;">作者：</span><a target="_blank" rel="nofollow noopener noreferrer" href="/about">xiaoyu</a></p>
+    <p><span style="font-weight: bold;">文章链接：</span><a target="_blank" rel="nofollow noopener noreferrer" href="http://example.com/2021/05/12/vuex%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E5%88%86%E4%BA%AB/">http://example.com/2021/05/12/vuex%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E5%88%86%E4%BA%AB/</a></p>
+    <p><span style="font-weight: bold;">版权声明：</span>本博客所有文章除特别声明外，均采用<a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">CC BY-NC-SA 4.0 协议</a>。转载请注明出处！</p>
+  </div>
+  
+  </div>
+</article>
+<div class="nav">
+  
+  
+</div>
+
+<div class="card card-content toc-card" id="mobiletoc">
+  <div class="toc-header"><i class="iconfont icon-menu" style="padding-right: 2px;"></i>目录</div>
+<ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Vuex%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">Vuex是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E4%B8%8EVue%E7%9B%B8%E5%85%B3%E8%81%94"><span class="toc-text">如何与Vue相关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E6%A0%91%E7%9A%84%E7%BB%93%E6%9E%84"><span class="toc-text">状态树的结构</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9D%97"><span class="toc-text">初始化模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E8%99%9A%E6%8B%9F%E7%8A%B6%E6%80%81%E6%A0%91"><span class="toc-text">初始化虚拟状态树</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0"><span class="toc-text">辅助函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%82%E6%AD%A5"><span class="toc-text">异步</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-text">问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B6%E5%AE%83"><span class="toc-text">其它</span></a></li></ol>
+</div></main>
+            <aside class="left-column">
+              
+              <div class="card card-author">
+                
+<img src="https://demo.theme-kaze.top/img/Kaze.png" class="author-img">
+
+<p class="author-name">xiaoyu</p>
+<p class="author-description">designed by xiaoyu</p>
+<div class="author-message">
+  <a class="author-posts-count" href="/archives">
+    <span>1</span>
+    <span>文章</span>
+  </a>
+  <a class="author-categories-count" href="/categories">
+    <span>0</span>
+    <span>分类</span>
+  </a>
+  <a class="author-tags-count" href="/tags">
+    <span>2</span>
+    <span>标签</span>
+  </a>
+</div>
+
+              </div>
+               <div class="sticky-tablet">
+  
+  
+  <article class="display-when-two-columns spacer">
+    <div class="card card-content toc-card">
+      <div class="toc-header"><i class="iconfont icon-menu" style="padding-right: 2px;"></i>目录</div>
+<ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Vuex%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">Vuex是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E4%B8%8EVue%E7%9B%B8%E5%85%B3%E8%81%94"><span class="toc-text">如何与Vue相关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E6%A0%91%E7%9A%84%E7%BB%93%E6%9E%84"><span class="toc-text">状态树的结构</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9D%97"><span class="toc-text">初始化模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E8%99%9A%E6%8B%9F%E7%8A%B6%E6%80%81%E6%A0%91"><span class="toc-text">初始化虚拟状态树</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0"><span class="toc-text">辅助函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%82%E6%AD%A5"><span class="toc-text">异步</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-text">问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B6%E5%AE%83"><span class="toc-text">其它</span></a></li></ol>
+    </div>
+  </article>
+  
+  
+  <article class="card card-content categories-widget">
+    <div class="categories-card">
+  <div class="categories-header"><i class="iconfont icon-fenlei" style="padding-right: 2px;"></i>分类</div>
+  <div class="categories-list">
+    
+  </div>
+</div>
+  </article>
+  
+  <article class="card card-content tags-widget">
+    <div class="tags-card">
+  <div class="tags-header"><i class="iconfont icon-biaoqian" style="padding-right: 2px;"></i>热门标签</div>
+  <div class="tags-list">
+    
+    <a href="/tags/vuex/" title="vuex"><div class="tags-list-item">vuex</div></a>
+    
+    <a href="/tags/vue/" title="vue"><div class="tags-list-item">vue</div></a>
+    
+  </div>
+</div>
+  </article>
+  
+  
+</div>
+            </aside>
+            <aside class="right-column">
+              <div class="sticky-widescreen">
+  
+  
+  <article class="card card-content toc-card">
+    <div class="toc-header"><i class="iconfont icon-menu" style="padding-right: 2px;"></i>目录</div>
+<ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Vuex%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-text">Vuex是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E4%B8%8EVue%E7%9B%B8%E5%85%B3%E8%81%94"><span class="toc-text">如何与Vue相关联</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E6%A0%91%E7%9A%84%E7%BB%93%E6%9E%84"><span class="toc-text">状态树的结构</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9D%97"><span class="toc-text">初始化模块</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E8%99%9A%E6%8B%9F%E7%8A%B6%E6%80%81%E6%A0%91"><span class="toc-text">初始化虚拟状态树</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0"><span class="toc-text">辅助函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%82%E6%AD%A5"><span class="toc-text">异步</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-text">问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B6%E5%AE%83"><span class="toc-text">其它</span></a></li></ol>
+  </article>
+  
+  
+  <article class="card card-content">
+    <div class="recent-posts-card">
+  <div class="recent-posts-header"><i class="iconfont icon-wenzhang_huaban" style="padding-right: 2px;"></i>最近文章</div>
+  <div class="recent-posts-list">
+    
+      <div class="recent-posts-item">
+        <div class="recent-posts-item-title">2021-05-12</div>
+        <a href="/2021/05/12/vuex%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E5%88%86%E4%BA%AB/"><div class="recent-posts-item-content">vuex源码阅读分享</div></a>
+      </div>
+    
+  </div>
+</div>
+  </article>
+  
+  
+</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+     <footer class="footer">
+  <div class="footer-container">
+    <div>
+      <div class="footer-dsc">
+        <span>Copyright ©
+          
+          2020 -
+          
+          2021
+        </span>
+        &nbsp;
+        <a href="/" class="footer-link">小雨博客 </a>
+      </div>
+    </div>
+
+    
+    <div class="footer-dsc">
+      
+      Powered by
+      <a href="https://hexo.io/" class="footer-link" target="_blank" rel="nofollow noopener noreferrer">&nbsp;Hexo </a>
+      
+      
+      <span>&nbsp;|&nbsp;</span>
+      
+      
+      Theme -
+      <a href="https://github.com/theme-kaze" class="footer-link" target="_blank"
+        rel="nofollow noopener noreferrer">&nbsp;Kaze</a>
+      
+    </div>
+    
+    
+    
+    
+</footer> <a role="button" id="scrollbutton" class="basebutton"  aria-label="回到顶部">
+  <i class="iconfont icon-arrowleft button-icon"></i>
+</a>
+<a role="button" id="menubutton" class="basebutton">
+  <i class="iconfont icon-menu button-icon"></i>
+</a>
+<a role="button" id="popbutton" class="basebutton" aria-label="控制中心">
+  <i class="iconfont icon-expand button-icon"></i>
+</a>
+<a role="button" id="darkbutton" class="basebutton darkwidget" aria-label="夜色模式">
+  <i class="iconfont icon-weather button-icon"></i>
+</a>
+<a role="button" id="searchbutton" class="basebutton searchwidget" aria-label="搜索">
+  <i class="iconfont icon-search button-icon"></i>
+</a>    <script>
+  var addImgLayout = function () {
+    var img = document.querySelectorAll('.post-content img')
+    var i
+    for (i = 0; i < img.length; i++) {
+      var wrapper = document.createElement('a')
+      wrapper.setAttribute('href', img[i].getAttribute('data-src'))
+      wrapper.setAttribute('aria-label', 'illustration')
+      wrapper.style.cssText =
+        'width: 100%; display: flex; justify-content: center;'
+      if (img[i].alt) wrapper.dataset.caption = img[i].alt
+      wrapper.dataset.nolink = true
+      img[i].before(wrapper)
+      wrapper.append(img[i])
+      var divWrap = document.createElement('div')
+      divWrap.classList.add('gallery')
+      wrapper.before(divWrap)
+      divWrap.append(wrapper)
+    }
+    baguetteBox.run('.gallery')
+  }
+</script>
+<script>
+  loadScript(
+    "/js/lib/lightbox/baguetteBox.min.js",
+    addImgLayout
+  )
+</script>
+   <script src="/js/main.js"></script>  
+    <script>
+      var addLazyload = function () {
+        var observer = lozad('.lozad', {
+          load: function (el) {
+            el.srcset = el.getAttribute('data-src')
+          },
+          loaded: function (el) {
+            el.classList.add('loaded')
+          },
+        })
+        observer.observe()
+      }
+    </script>
+    <script>
+      loadScript('/js/lib/lozad.min.js', addLazyload)
+    </script>
+     
+    
+  </body>
+</html>
